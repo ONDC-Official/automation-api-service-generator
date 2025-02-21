@@ -1,0 +1,1 @@
+# automation-api-service-generator
