@@ -227,17 +227,17 @@ function createAdapterYaml(params: AdapterParams) {
 			},
 			{
 				name: "BapTxnReceiver",
-				path: `/api-service/ONDC:${params.domain}/${params.version}/seller/`,
+				path: `/api-service/${params.domain}/${params.version}/seller/`,
 				handler: receiverHandler("BAP", "receiver"),
 			},
 			{
 				name: "BppTxnReceiver",
-				path: `/api-service/ONDC:${params.domain}/${params.version}/buyer/`,
+				path: `/api-service/${params.domain}/${params.version}/buyer/`,
 				handler: receiverHandler("BPP", "receiver"),
 			},
 			{
 				name: "mockTxnCaller",
-				path: `/api-service/ONDC:${params.domain}/${params.version}/mock/`,
+				path: `/api-service/${params.domain}/${params.version}/mock/`,
 				handler: mockHandler,
 			},
 		],
