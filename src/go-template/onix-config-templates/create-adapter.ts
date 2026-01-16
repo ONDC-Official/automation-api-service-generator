@@ -194,7 +194,7 @@ function createAdapterYaml(params: AdapterParams) {
 		modules: [
 			{
 				name: "formReceiver",
-				path: `/api-service/ONDC:${params.domain}/${params.version}/html-form`,
+				path: `/api-service/${params.domain}/${params.version}/html-form`,
 				handler: {
 					type: "std",
 					role: "bap",
@@ -207,7 +207,7 @@ function createAdapterYaml(params: AdapterParams) {
 			},
 			{
 				name: "standaloneValidator",
-				path: `/api-service/ONDC:${params.domain}/${params.version}/test/`,
+				path: `/api-service/${params.domain}/${params.version}/test/`,
 				handler: {
 					type: "std",
 					role: "bap",
