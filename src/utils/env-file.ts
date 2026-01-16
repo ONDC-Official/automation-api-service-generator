@@ -35,8 +35,8 @@ NO_TOKEN=${process.env.NO_TOKEN}
 };
 
 export async function createOnixEnvFile() {
-	let serviceName = `onix-${process.env.DOMAIN}`.replace(/\./g, ":");
-	serviceName += `:${process.env.VERSION}`.replace(/\./g, ":");
+	let serviceName = `onix-${process.env.DOMAIN}`.replace(/\:/g, "_");
+	serviceName += `_${process.env.VERSION}`.replace(/\./g, "_");
 	serviceName = serviceName.toLowerCase();
 
 	const env = `SUBSCRIBER_ID="${process.env.SUBSCRIBER_ID}"

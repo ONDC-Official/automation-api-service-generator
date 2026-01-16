@@ -9,7 +9,6 @@ import { createAdapterFiles } from "../onix-config-templates/create-adapter.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const ONIX_GIT = "https://github.com/ONDC-Official/automation-beckn-onix";
 const ONIX_PLUGINS_GIT =
 	"https://github.com/ONDC-Official/automation-beckn-plugins";
 const BUILD_OUTPUT = path.resolve(__dirname, "../../../build-output");
@@ -23,9 +22,6 @@ export const CreateOnixServer = async () => {
 	const domain = buildParsed.info.domain as string;
 	const domainFilename = domain.toLowerCase().replace(":", "_");
 	const versionFileName = `v${version}`;
-
-	// Step 1: Clone ONIX repository
-	await cloneOnix();
 
 	// Step 2: Generate schemas
 	await generateSchemas(
@@ -54,25 +50,6 @@ export const CreateOnixServer = async () => {
 	await copyDockerAndComposeFiles();
 };
 
-async function cloneOnix() {
-	const onixPath = path.resolve(BUILD_OUTPUT, "automation-beckn-onix");
-
-	if (!fs.existsSync(BUILD_OUTPUT)) {
-		fs.mkdirSync(BUILD_OUTPUT, { recursive: true });
-	}
-
-	if (!fs.existsSync(onixPath)) {
-		console.log("Cloning ONIX repository...");
-		execSync(`git clone --branch main ${ONIX_GIT} automation-beckn-onix`, {
-			cwd: BUILD_OUTPUT,
-			stdio: "inherit",
-		});
-		console.log("✅ ONIX repository cloned successfully.");
-	} else {
-		console.log("ONIX repository already exists, skipping clone.");
-	}
-}
-
 async function generateSchemas(
 	domain: string,
 	version: string,
@@ -82,7 +59,7 @@ async function generateSchemas(
 ) {
 	const outputPath = path.resolve(
 		BUILD_OUTPUT,
-		`automation-beckn-onix/schemas/${domainFilename}/${versionFileName}`
+		`temp/schemas/${domainFilename}/${versionFileName}`
 	);
 
 	console.log(`Generating schemas for ${domain} version ${version}...`);
