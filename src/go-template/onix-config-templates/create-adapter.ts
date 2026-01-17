@@ -335,7 +335,7 @@ function createNpNoConfig(params: AdapterParams) {
 			payload_id: "uuid()",
 			transaction_id: "$.requestBody.context.transaction_id",
 			message_id: "$.requestBody.context.message_id",
-			subscriber_url: "$.requestBody.context.subscriber_url",
+			subscriber_url: "$.ctx.cookies.subscriber_url",
 			action: "$.requestBody.context.action",
 			timestamp: "$.requestBody.context.timestamp",
 			api_name: "$.requestBody.context.action",
