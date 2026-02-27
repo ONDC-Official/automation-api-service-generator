@@ -1,0 +1,310 @@
+name: Deploy Api Service
+
+on:
+  workflow_dispatch:
+  # push:
+  #   paths:
+  #     - "api-service/**"
+  #     - "mock-service/**"
+  #   branches:
+  #     - "draft-*"
+  #     - "release-*"
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }} # environment exactly matches branch name
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect build type
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == draft* ]]; then
+            echo "BUILD_TYPE=draft" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF_NAME}" == release* ]]; then
+            echo "BUILD_TYPE=release" >> $GITHUB_ENV
+          else
+            echo "BUILD_TYPE=default" >> $GITHUB_ENV
+          fi
+          echo "Detected BUILD_TYPE=$BUILD_TYPE"
+          echo "Detected BUILD_TYPE=${{ steps.set_build_type.outputs.build_type }}"
+
+      - name: Prepare build repo
+        run: |
+          echo "Cloning generator repo..."
+          # ls -R $GITHUB_WORKSPACE
+          git clone --single-branch --branch main https://github.com/ONDC-Official/automation-api-service-generator.git automation-api-service-generator
+          # git clone --single-branch --branch main https://github.com/ONDC-Official/automation-api-service-generator.git automation-api-service-generator
+          # ls -R automation-api-service-generator
+          echo "Initializing submodules..."
+          cd automation-api-service-generator
+          GENERATOR_SHA=$(git rev-parse HEAD)
+          TAG="$GITHUB_SHA-$GENERATOR_SHA"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "TAG in this step: $TAG"
+          GENERATOR_SHA=$(git rev-parse HEAD)
+          git submodule update --init --recursive
+          echo "Copying api-config from current repo..."
+          cp -rf $GITHUB_WORKSPACE/api-service/src/config/* ./src/config/
+          # ls -R automation-api-service-generator/src
+          echo "Build repo ready at $(pwd)"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GIT_PAT }}
+
+      - name: Build Docker image
+        run: |
+          cd automation-api-service-generator
+          echo "TAG in this step: $TAG"
+          IMAGE_NAME=ghcr.io/ondc-official/automation-api-service-${{vars.CONTAINER_NAME}}
+          docker build -t $IMAGE_NAME:$TAG .
+          echo "$TAG"
+        env:
+          DOCKER_BUILDKIT: 1
+
+      - name: Run container locally
+        run: |
+          IMAGE_NAME=ghcr.io/ondc-official/automation-api-service-${{vars.CONTAINER_NAME}}
+
+
+          if [[ "$BUILD_TYPE" == "draft" ]]; then
+
+          cat > ./.env <<EOF
+          NODE_ENV=${{ vars.NODE_ENV }}
+          SIGN_PRIVATE_KEY=${{ secrets.SIGN_PRIVATE_KEY }}
+          PORT=${{ vars.API_SERVICE_PORT }}
+          SIGN_PUBLIC_KEY=${{ vars.SIGN_PUBLIC_KEY }}
+          SUBSCRIBER_ID=${{ vars.SUBSCRIBER_ID }}
+          UKID=${{ vars.UKID }}
+          ONDC_ENV=${{ vars.ONDC_ENV }}
+          REDIS_USERNAME=${{ vars.REDIS_USERNAME }}
+          REDIS_HOST=${{ vars.REDIS_HOST }}
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          REDIS_PORT=${{ vars.REDIS_PORT }}
+          WORKBENCH_SUBSCRIBER_ID=${{ vars.WORKBENCH_SUBSCRIBER_ID }}
+          IN_HOUSE_REGISTRY=${{ vars.IN_HOUSE_REGISTRY }}
+          MOCK_SERVER_URL=${{ vars.MOCK_SERVER_URL }}
+          DATA_BASE_URL=${{ vars.DATA_BASE_URL }}
+          API_SERVICE_URL=${{ vars.API_SERVICE_URL }}
+          CONFIG_SERVICE_URL=${{ vars.CONFIG_SERVICE_URL }}
+          CONTAINER_NAME=${{ vars.CONTAINER_NAME }}
+          DOMAIN=${{ vars.DOMAIN }}
+          VERSION=${{ vars.VERSION }}
+          SERVICE_NAME=automation-api-service-${{ vars.CONTAINER_NAME }}
+          TRACE_URL=${{ vars.TRACE_URL }}
+          API_SERVICE_KEY=${{ secrets.API_SERVICE_KEY_DEV }}
+          LOKI_HOST=${{ vars.LOKI_HOST }}
+          HOSTED_ENV=${{ vars.HOSTED_ENV_DEV }}
+          NO_URL=${{ vars.NO_URL }}
+          NO_TOKEN=${{ secrets.NO_TOKEN }}
+          EOF
+
+          elif [[ "$BUILD_TYPE" == "release" ]]; then
+          cat > ./.env <<EOF
+          NODE_ENV=${{ vars.NODE_ENV }}
+          SIGN_PRIVATE_KEY=${{ secrets.SIGN_PRIVATE_KEY }}
+          PORT=${{ vars.API_SERVICE_PORT }}
+          SIGN_PUBLIC_KEY=${{ vars.SIGN_PUBLIC_KEY }}
+          SUBSCRIBER_ID=${{ vars.SUBSCRIBER_ID_STAGING }}
+          UKID=${{ vars.UKID_STAGING }}
+          ONDC_ENV=${{ vars.ONDC_ENV }}
+          REDIS_USERNAME=${{ vars.REDIS_USERNAME }}
+          REDIS_HOST=${{ vars.REDIS_HOST }}
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          REDIS_PORT=${{ vars.REDIS_PORT_STAGING }}
+          MOCK_SERVER_URL=${{ vars.MOCK_SERVER_URL_STAGING }}
+          DATA_BASE_URL=${{ vars.DATA_BASE_URL_STAGING }}
+          API_SERVICE_URL=${{ vars.API_SERVICE_URL_STAGING }}
+          CONTAINER_NAME=${{ vars.CONTAINER_NAME }}
+          CONFIG_SERVICE_URL=${{ vars.CONFIG_SERVICE_URL_STAGING }}
+          DOMAIN=${{ vars.DOMAIN }}
+          VERSION=${{ vars.VERSION }}
+          SERVICE_NAME=automation-api-service-${{ vars.CONTAINER_NAME }}
+          TRACE_URL=${{ vars.TRACE_URL_STAGING }}
+          API_SERVICE_KEY=${{ secrets.API_SERVICE_KEY_STAGING }}
+          LOKI_HOST=${{ vars.LOKI_HOST }}
+          WORKBENCH_SUBSCRIBER_ID=${{ vars.WORKBENCH_SUBSCRIBER_ID }}
+          IN_HOUSE_REGISTRY=${{ vars.IN_HOUSE_REGISTRY_STAGING }}
+          HOSTED_ENV=${{ vars.HOSTED_ENV_STAGING }}
+          NO_URL=${{ vars.NO_URL }}
+          NO_TOKEN=${{ secrets.NO_TOKEN }}
+
+
+          EOF
+          fi
+            
+          # docker run -d --rm --name api-test \
+          #   -p ${{ vars. API_SERVICE_PORT }}:${{ vars. API_SERVICE_PORT }} \
+          #   --env-file ./.env \
+          #   $IMAGE_NAME:$TAG
+          # sleep 5
+
+          docker run -d --name api-test \
+            -p ${{ vars. API_SERVICE_PORT }}:${{ vars. API_SERVICE_PORT }} \
+            --env-file .env \
+            $IMAGE_NAME:$TAG
+
+          echo "⏳ Waiting for service..."
+          sleep 5
+
+          echo "📋 Container status:"
+          docker ps -a
+
+          echo "📜 Logs:"
+          docker logs api-test || true
+
+          # echo "🔍 Health check:"
+          # curl -v http://localhost:${{ vars. API_SERVICE_PORT }}/health || true
+
+      - name: Healthcheck
+        run: |
+          HEALTHCHECK_URL="http://localhost:${{ vars.API_SERVICE_PORT}}/api-service/${{ vars.DOMAIN }}/${{vars.VERSION}}/health"
+          echo "Checking $HEALTHCHECK_URL ..."
+          for i in {1..10}; do
+            if curl -sSf "$HEALTHCHECK_URL" > /dev/null; then
+              echo "✅ Container is healthy"
+              exit 0
+            fi
+            echo "Waiting... ($i)"
+            sleep 2
+          done
+          echo "❌ Healthcheck failed!"
+          docker logs api-test
+          exit 1
+
+      - name: Stop test container
+        if: always()
+        run: docker stop api-test || true
+
+      - name: Tag & Push Images
+        run: |
+          echo TAG in next step: $TAG
+          IMAGE_NAME=ghcr.io/ondc-official/automation-api-service-${{vars.CONTAINER_NAME}}
+          docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:latest
+          docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:stable
+          docker push $IMAGE_NAME:$TAG
+          docker push $IMAGE_NAME:latest
+          docker push $IMAGE_NAME:stable
+
+  deploy:
+    needs: build-and-verify
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }} # environment exactly matches branch name
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # derive BUILD_TYPE from branch/tag name
+            if [[ "${{ github.ref_name }}" == draft* ]]; then
+              BUILD_TYPE=draft
+            elif [[ "${{ github.ref_name }}" == release* ]]; then
+              BUILD_TYPE=release
+            else
+              BUILD_TYPE=default
+            fi
+
+
+            REPO_DIR="$HOME/ONDC-automation-framework/api-service/automation-api-service-${{ github.ref_name }}"
+            rm -rf $REPO_DIR
+            mkdir -p $REPO_DIR
+
+
+            echo $BUILD_TYPE
+            echo "BUILD_TYPE=${{ needs.detect-build-type.outputs.build_type }}"
+
+
+            echo "Writing .env file..."
+            cd $REPO_DIR
+
+
+            if [[ "$BUILD_TYPE" == "draft" ]]; then
+
+            cat > ./.env <<EOF
+            NODE_ENV=${{ vars.NODE_ENV }}
+            SIGN_PRIVATE_KEY=${{ secrets.SIGN_PRIVATE_KEY }}
+            PORT=${{ vars.API_SERVICE_PORT }}
+            SIGN_PUBLIC_KEY=${{ vars.SIGN_PUBLIC_KEY }}
+            SUBSCRIBER_ID=${{ vars.SUBSCRIBER_ID }}
+            UKID=${{ vars.UKID }}
+            ONDC_ENV=${{ vars.ONDC_ENV }}
+            REDIS_USERNAME=${{ vars.REDIS_USERNAME }}
+            REDIS_HOST=${{ vars.REDIS_HOST }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            REDIS_PORT=${{ vars.REDIS_PORT }}
+            WORKBENCH_SUBSCRIBER_ID=${{ vars.WORKBENCH_SUBSCRIBER_ID }}
+            IN_HOUSE_REGISTRY=${{ vars.IN_HOUSE_REGISTRY }}
+            MOCK_SERVER_URL=${{ vars.MOCK_SERVER_URL }}
+            DATA_BASE_URL=${{ vars.DATA_BASE_URL }}
+            API_SERVICE_URL=${{ vars.API_SERVICE_URL }}
+            CONFIG_SERVICE_URL=${{ vars.CONFIG_SERVICE_URL }}
+            CONTAINER_NAME=${{ vars.CONTAINER_NAME }}
+            DOMAIN=${{ vars.DOMAIN }}
+            VERSION=${{ vars.VERSION }}
+            SERVICE_NAME=automation-api-service-${{ vars.CONTAINER_NAME }}
+            TRACE_URL=${{ vars.TRACE_URL }}
+            API_SERVICE_KEY=${{ secrets.API_SERVICE_KEY_DEV }}
+            LOKI_HOST=${{ vars.LOKI_HOST }}
+            HOSTED_ENV=${{ vars.HOSTED_ENV_DEV }}
+            NO_URL=${{ vars.NO_URL }}
+            NO_TOKEN=${{ secrets.NO_TOKEN }}
+            EOF
+
+            elif [[ "$BUILD_TYPE" == "release" ]]; then
+            cat > ./.env <<EOF
+            NODE_ENV=${{ vars.NODE_ENV }}
+            SIGN_PRIVATE_KEY=${{ secrets.SIGN_PRIVATE_KEY }}
+            PORT=${{ vars.API_SERVICE_PORT }}
+            SIGN_PUBLIC_KEY=${{ vars.SIGN_PUBLIC_KEY }}
+            SUBSCRIBER_ID=${{ vars.SUBSCRIBER_ID_STAGING }}
+            UKID=${{ vars.UKID_STAGING }}
+            ONDC_ENV=${{ vars.ONDC_ENV }}
+            REDIS_USERNAME=${{ vars.REDIS_USERNAME }}
+            REDIS_HOST=${{ vars.REDIS_HOST }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            REDIS_PORT=${{ vars.REDIS_PORT_STAGING }}
+            MOCK_SERVER_URL=${{ vars.MOCK_SERVER_URL_STAGING }}
+            DATA_BASE_URL=${{ vars.DATA_BASE_URL_STAGING }}
+            API_SERVICE_URL=${{ vars.API_SERVICE_URL_STAGING }}
+            CONTAINER_NAME=${{ vars.CONTAINER_NAME }}
+            CONFIG_SERVICE_URL=${{ vars.CONFIG_SERVICE_URL_STAGING }}
+            DOMAIN=${{ vars.DOMAIN }}
+            VERSION=${{ vars.VERSION }}
+            SERVICE_NAME=automation-api-service-${{ vars.CONTAINER_NAME }}
+            TRACE_URL=${{ vars.TRACE_URL_STAGING }}
+            API_SERVICE_KEY=${{ secrets.API_SERVICE_KEY_STAGING }}
+            LOKI_HOST=${{ vars.LOKI_HOST }}
+            WORKBENCH_SUBSCRIBER_ID=${{ vars.WORKBENCH_SUBSCRIBER_ID }}
+            IN_HOUSE_REGISTRY=${{ vars.IN_HOUSE_REGISTRY_STAGING }}
+            HOSTED_ENV=${{ vars.HOSTED_ENV_STAGING }}
+            NO_URL=${{ vars.NO_URL }}
+            NO_TOKEN=${{ secrets.NO_TOKEN }}
+
+            EOF
+            fi
+              
+
+
+
+            IMAGE_NAME=ghcr.io/ondc-official/automation-api-service-${{vars.CONTAINER_NAME}}
+
+            echo "Pulling latest image..."
+            docker pull $IMAGE_NAME:stable || docker pull $IMAGE_NAME:stable
+
+            echo "Restarting container..."
+            docker stop automation-api-service-${{ vars.CONTAINER_NAME }} || true
+            docker rm automation-api-service-${{ vars.CONTAINER_NAME }} || true
+
+            docker run -d --name automation-api-service-${{ vars.CONTAINER_NAME }} \
+              --env-file $REPO_DIR/.env \
+              -p ${{ vars. API_SERVICE_PORT }}:${{ vars. API_SERVICE_PORT }} \
+              $IMAGE_NAME:stable

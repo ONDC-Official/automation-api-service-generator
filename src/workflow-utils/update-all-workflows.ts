@@ -22,6 +22,9 @@
  * added or changed.
  */
 
+// if empty all are enabled, otherwise only branches matching the regexes in the array will be updated
+const ENABLED_BRANCHES = [/.*FIS.*/i];
+
 import axios, { isAxiosError } from "axios";
 import type { AxiosInstance } from "axios";
 
@@ -212,6 +215,24 @@ async function main() {
 		if (branches.length === 0) {
 			console.log("No branches found. Exiting.");
 			return;
+		}
+		// Step 1.5: Filter branches if ENABLED_BRANCHES is set
+		if (ENABLED_BRANCHES.length > 0) {
+			const regexes = ENABLED_BRANCHES.map((pattern) => new RegExp(pattern));
+			const filteredBranches = branches.filter((branch) =>
+				regexes.some((regex) => regex.test(branch)),
+			);
+			console.log(
+				`🔍 Filtering branches with patterns ${ENABLED_BRANCHES.join(
+					", ",
+				)}. ${filteredBranches.length} branches match the criteria.`,
+			);
+			if (filteredBranches.length === 0) {
+				console.log("No branches match the filtering criteria. Exiting.");
+				return;
+			}
+			branches.length = 0; // Clear original array
+			branches.push(...filteredBranches); // Add filtered branches
 		}
 
 		// Step 2: Process each branch

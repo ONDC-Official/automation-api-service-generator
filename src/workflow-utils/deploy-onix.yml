@@ -201,6 +201,7 @@ jobs:
           else
             echo "Pushed: $DEPLOYMENT_TAG"
           fi
+          echo "https://github.com/orgs/${{ env.REGISTRY_NAMESPACE }}/packages/container/${PACKAGE_NAME}/settings"
       # - name: Make package public (with retry)
       #   continue-on-error: true
       #   run: |
