@@ -9,14 +9,15 @@ import { createAdapterFiles } from "../onix-config-templates/create-adapter.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const ONIX_PLUGINS_GIT = 
-    "https://github.com/ONDC-Official/automation-beckn-plugins";
-const BUILD_OUTPUT = path.resolve(__dirname, "../../../build-output");
+const ONIX_PLUGINS_GIT =
+	"https://github.com/ONDC-Official/automation-beckn-plugins";
+// BUILD_OUTPUT is relative to where the user runs npx (their working directory)
+const BUILD_OUTPUT = path.resolve(process.cwd(), "build-output");
 
 export const CreateOnixServer = async () => {
     console.log("Creating API Service Layer via ONIX...");
 
-    const buildPath = path.resolve(__dirname, "../../../src/config/build.yaml");
+    const buildPath = process.env.BUILD_YAML_PATH!;
     const buildParsed = (await loadAndDereferenceYaml(buildPath)) as any;
     const version = buildParsed.info.version as string;
     const domain = buildParsed.info.domain as string;
@@ -24,7 +25,7 @@ export const CreateOnixServer = async () => {
     const versionFileName = `v${version}`;
     const transactionProperties = buildParsed["x-supported-actions"];
 
-    // Step 2: Generate schemas
+    // Step 1: Generate schemas
     await generateSchemas(
         domain,
         version,
@@ -33,21 +34,22 @@ export const CreateOnixServer = async () => {
         buildPath,
     );
 
-    // Step 3: Clone Plugins repository
+    // Step 2: Clone Plugins repository
     await clonePlugins();
 
-    // Step 4: Generate L1 validations
+    // Step 3: Generate L1 validations
     await generateL1Validations(buildPath);
 
-    // Step 5: Update go.mod to point to correct validationpkg path
+    // Step 4: Update go.mod to point to correct validationpkg path
     await updateGoModPath();
 
-    // Step 7: Generate .env file
+    // Step 5: Generate .env file
     await createOnixEnvFile();
 
-    // Step 8: Create adapter configuration files
+    // Step 6: Create adapter configuration files
     await createAdapterConfigs(domain, version, transactionProperties);
 
+    // Step 7: Copy Dockerfile, entrypoint, and docker-compose
     await copyDockerAndComposeFiles();
 };
 
@@ -70,8 +72,8 @@ async function generateSchemas(
     }
 
     const scriptPath = path.resolve(
-        process.cwd(),
-        "scripts/generate-onix-schemas.sh",
+        __dirname,
+        "../../../scripts/generate-onix-schemas.sh",
     );
 
     try {
@@ -121,8 +123,8 @@ async function generateL1Validations(buildPath: string) {
     }
 
     const scriptPath = path.resolve(
-        process.cwd(),
-        "scripts/generate-l1-validations.sh",
+        __dirname,
+        "../../../scripts/generate-l1-validations.sh",
     );
 
     try {
@@ -236,6 +238,6 @@ async function copyDockerAndComposeFiles() {
     const destComposeFile = path.resolve(BUILD_OUTPUT, "docker-compose.yml");
     fs.copyFileSync(sourceComposeFile, destComposeFile);
     console.log(
-        `pasted to ${destDockerfile}, ${destEntrypoint} and ${destComposeFile}`,
+        `✅ Copied Dockerfile, entrypoint and docker-compose to ${BUILD_OUTPUT}`,
     );
 }

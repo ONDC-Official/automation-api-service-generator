@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { readFileSync } from "fs";
 import fse from "fs-extra";
 import { ConfigCompiler } from "ondc-code-generator";
@@ -12,12 +13,33 @@ import { clearAndCopy } from "./utils/fs-utilts.js";
 import { createEnvFile } from "./utils/env-file.js";
 import fs from "fs";
 import { CreateOnixServer } from "./go-template/create-onix/index.js";
+import { Command } from "commander";
+import { createRequire } from "module";
+
+// ── Commander CLI setup ─────────────────────────────────────────────
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json");
+
+const program = new Command();
+program
+	.name("ondc-api-service-generator")
+	.description("Generate ONDC ONIX API service from a build.yaml spec")
+	.version(pkg.version)
+	.option("-c, --config <path>", "Path to build.yaml spec file", "./src/config/build.yaml")
+	.parse(process.argv);
+
+const cliOptions = program.opts<{ config: string }>();
+
+// Resolve to absolute path relative to cwd (where npx is invoked)
+process.env.BUILD_YAML_PATH = path.resolve(process.cwd(), cliOptions.config);
+
+// Load .env AFTER CLI args so CLI values take priority
 dotenv.config();
 
 export const createApiServiceLayer = async () => {
 	console.log("Creating API Service Layer...");
 	const buildString = readFileSync(
-		path.resolve(__dirname, "../src/config/build.yaml"),
+		process.env.BUILD_YAML_PATH!,
 		"utf8",
 	);
 	const buildParsed = (await loadAndDereferenceYaml(buildString)) as any;
@@ -25,8 +47,6 @@ export const createApiServiceLayer = async () => {
 	const comp = new ConfigCompiler(SupportedLanguages.Typescript);
 	fse.emptyDirSync(path.resolve(__dirname, "../generated"));
 	await comp.initialize(buildString);
-	// const paths = await comp.generateValidPaths();
-	// writeFileSync("./paths.json", JSON.stringify(paths, null, 2));
 	await comp.generateCode(valParsed as any, "L1-validations");
 	await comp.generateL0Schema();
 

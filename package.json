@@ -1,9 +1,20 @@
 {
-	"name": "api-service-generator",
-	"version": "0.0.1",
-	"description": "generate api layer from build",
-	"main": "index.js",
+	"name": "@ondc/api-service-generator",
+	"version": "1.0.1",
+	"description": "Generate ONDC ONIX API service layer from a build.yaml spec",
+	"main": "dist/index.js",
 	"type": "module",
+	"bin": {
+		"ondc-api-service-generator": "./dist/index.js"
+	},
+	"files": [
+		"dist/",
+		"src/go-template/onix-config-templates/Dockerfile",
+		"src/go-template/onix-config-templates/docker-compose.yml",
+		"src/go-template/onix-config-templates/docker-entrypoint.sh",
+		"template/",
+		"scripts/"
+	],
 	"scripts": {
 		"test-l1": "node dist/tests/test-l1.js",
 		"build": "tsc",
@@ -20,19 +31,20 @@
 		"@types/node": "^22.13.4",
 		"concurrently": "^9.1.2",
 		"nodemon": "^3.1.9",
-		"ondc-code-generator": "^0.8.7",
 		"ts-node": "^10.9.2",
 		"typescript": "^5.7.3"
 	},
 	"dependencies": {
 		"@apidevtools/json-schema-ref-parser": "^11.9.1",
 		"axios": "^1.9.0",
+		"commander": "^14.0.3",
 		"dotenv": "^16.4.7",
 		"fs-extra": "^11.3.0",
 		"js-yaml": "^4.1.0",
 		"jsonpath": "^1.1.1",
 		"lodash": "^4.17.21",
 		"ondc-automation-cache-lib": "^2.1.0",
+		"ondc-code-generator": "^0.8.7",
 		"ondc-crypto-sdk-nodejs": "^2.1.1",
 		"winston-loki": "^6.1.3"
 	}
