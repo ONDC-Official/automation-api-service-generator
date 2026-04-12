@@ -44,7 +44,7 @@ export const CreateOnixServer = async () => {
     await updateGoModPath();
 
     // Step 5: Generate .env file
-    await createOnixEnvFile();
+    await createOnixEnvFile(BUILD_OUTPUT);
 
     // Step 6: Create adapter configuration files
     await createAdapterConfigs(domain, version, transactionProperties);
