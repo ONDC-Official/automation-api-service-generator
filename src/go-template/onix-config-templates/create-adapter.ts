@@ -35,7 +35,7 @@ const ALL_ACTIONS = [
     "issue_status",
     "recon",
     "on_recon",
-    "rating", 
+    "rating",
     "on_rating"
 ];
 
@@ -129,6 +129,26 @@ function createAdapterYaml(params: AdapterParams) {
         };
 
         return data;
+    };
+
+    // Handler for the public /callback endpoint — mirrors the Node api-service's
+    // POST {base}/buyer/callback. The callbackreceiver step writes the
+    // form_completed:{txn}:{form_id} and latest_form:{txn} keys to Redis.
+    const callbackHandler = {
+        type: "std",
+        role: "bap",
+        httpClientConfig: httpClientConfig,
+        plugins: {
+            steps: [
+                {
+                    id: "callbackreceiver",
+                    config: {
+                        addr: params.redisAddress,
+                    },
+                },
+            ],
+        },
+        steps: ["callbackreceiver"],
     };
 
     const receiverHandler = (role: string, type: string) => {
@@ -251,6 +271,16 @@ function createAdapterYaml(params: AdapterParams) {
                     },
                     steps: ["validateSchema", "validateOndcPayload"],
                 },
+            },
+            {
+                name: "callbackReceiverBuyer",
+                path: `/api-service/${params.domain}/${params.version}/buyer/callback`,
+                handler: callbackHandler,
+            },
+            {
+                name: "callbackReceiverSeller",
+                path: `/api-service/${params.domain}/${params.version}/seller/callback`,
+                handler: callbackHandler,
             },
             {
                 name: "BapTxnReceiver",
