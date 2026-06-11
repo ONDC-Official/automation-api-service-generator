@@ -9,7 +9,7 @@ import { createAdapterFiles } from "../onix-config-templates/create-adapter.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const ONIX_PLUGINS_GIT = "https://github.com/amitsinha07/automation-beckn-plugins"
+const ONIX_PLUGINS_GIT = "https://github.com/ONDC-Official/automation-beckn-plugins"
     // "https://github.com/ONDC-Official/automation-beckn-plugins";
 const BUILD_OUTPUT = path.resolve(__dirname, "../../../build-output");
 
