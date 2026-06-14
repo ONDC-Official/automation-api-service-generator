@@ -36,7 +36,8 @@ const ALL_ACTIONS = [
     "recon",
     "on_recon",
     "rating",
-    "on_rating"
+    "on_rating",
+    "catalog_rejection"
 ];
 
 export function createAdapterFiles(params: AdapterParams) {
