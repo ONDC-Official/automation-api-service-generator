@@ -132,14 +132,25 @@ function createAdapterYaml(params: AdapterParams) {
         return data;
     };
 
-    // Handler for the public /callback endpoint — mirrors the Node api-service's
-    // POST {base}/buyer/callback. The callbackreceiver step writes the
-    // form_completed:{txn}:{form_id} and latest_form:{txn} keys to Redis.
+    // Handler for the public GET /callback endpoint — mirrors the Node
+    // api-service's GET {base}/buyer/callback. The callbackredirect middleware
+    // derives its own subscriberUrl, looks up redirection_url:{subscriberUrl},
+    // writes form_completed:{sessionId}, and issues an immediate HTTP 302 back to
+    // the workbench — it short-circuits, so the callbackreceiver step (kept as a
+    // never-reached fallback) does not run.
     const callbackHandler = {
         type: "std",
         role: "bap",
         httpClientConfig: httpClientConfig,
         plugins: {
+            middleware: [
+                {
+                    id: "callbackredirect",
+                    config: {
+                        addr: params.redisAddress,
+                    },
+                },
+            ],
             steps: [
                 {
                     id: "callbackreceiver",
