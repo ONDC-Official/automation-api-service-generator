@@ -136,8 +136,8 @@ function createAdapterYaml(params: AdapterParams) {
     // api-service's GET {base}/buyer/callback. The callbackredirect middleware
     // derives its own subscriberUrl, looks up redirection_url:{subscriberUrl},
     // writes form_completed:{sessionId}, and issues an immediate HTTP 302 back to
-    // the workbench — it short-circuits, so the callbackreceiver step (kept as a
-    // never-reached fallback) does not run.
+    // the workbench. It is GET-only (any other method gets 405) and short-circuits
+    // every request, so there are no steps on this handler.
     const callbackHandler = {
         type: "std",
         role: "bap",
@@ -151,16 +151,8 @@ function createAdapterYaml(params: AdapterParams) {
                     },
                 },
             ],
-            steps: [
-                {
-                    id: "callbackreceiver",
-                    config: {
-                        addr: params.redisAddress,
-                    },
-                },
-            ],
         },
-        steps: ["callbackreceiver"],
+        steps: [],
     };
 
     const receiverHandler = (role: string, type: string) => {
