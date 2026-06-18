@@ -35,6 +35,9 @@ const ALL_ACTIONS = [
     "issue_status",
     "recon",
     "on_recon",
+    "rating",
+    "on_rating",
+    "catalog_rejection"
 ];
 
 export function createAdapterFiles(params: AdapterParams) {
@@ -129,6 +132,29 @@ function createAdapterYaml(params: AdapterParams) {
         return data;
     };
 
+    // Handler for the public GET /callback endpoint — mirrors the Node
+    // api-service's GET {base}/buyer/callback. The callbackredirect middleware
+    // derives its own subscriberUrl, looks up redirection_url:{subscriberUrl},
+    // writes form_completed:{sessionId}, and issues an immediate HTTP 302 back to
+    // the workbench. It is GET-only (any other method gets 405) and short-circuits
+    // every request, so there are no steps on this handler.
+    const callbackHandler = {
+        type: "std",
+        role: "bap",
+        httpClientConfig: httpClientConfig,
+        plugins: {
+            middleware: [
+                {
+                    id: "callbackredirect",
+                    config: {
+                        addr: params.redisAddress,
+                    },
+                },
+            ],
+        },
+        steps: [],
+    };
+
     const receiverHandler = (role: string, type: string) => {
         return {
             type: "std",
@@ -137,7 +163,10 @@ function createAdapterYaml(params: AdapterParams) {
             plugins: {
                 cache: cachePlugin,
                 keyManager: keymanger,
-                middleware: [getMiddlwarePlugin("np_no_config")],
+                middleware: [
+                    { id: "encryptionmiddleware" },
+                    getMiddlwarePlugin("np_no_config")
+                ],
                 router: getRounterPlugin("np_router"),
                 schemaValidator: schemaPlugin,
                 ondcValidator: ondcValidatorPlugin,
@@ -166,7 +195,12 @@ function createAdapterYaml(params: AdapterParams) {
         plugins: {
             cache: cachePlugin,
             keyManager: keymanger,
-            middleware: [getMiddlwarePlugin("mock_no_config")],
+            middleware: [
+                getMiddlwarePlugin("mock_no_config"),
+            ],
+            transportWrapper: {
+                id: "outgoingencryptionmiddleware",
+            },
             router: getRounterPlugin("mock_router"),
             schemaValidator: schemaPlugin,
             ondcValidator: ondcValidatorPlugin,
@@ -241,6 +275,16 @@ function createAdapterYaml(params: AdapterParams) {
                     },
                     steps: ["validateSchema", "validateOndcPayload"],
                 },
+            },
+            {
+                name: "callbackReceiverBuyer",
+                path: `/api-service/${params.domain}/${params.version}/buyer/callback`,
+                handler: callbackHandler,
+            },
+            {
+                name: "callbackReceiverSeller",
+                path: `/api-service/${params.domain}/${params.version}/seller/callback`,
+                handler: callbackHandler,
             },
             {
                 name: "BapTxnReceiver",
