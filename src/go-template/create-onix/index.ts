@@ -12,7 +12,6 @@ const __dirname = path.dirname(__filename);
 const ONIX_PLUGINS_GIT = "https://github.com/ONDC-Official/automation-beckn-plugins"
     // "https://github.com/ONDC-Official/automation-beckn-plugins";
 const BUILD_OUTPUT = path.resolve(__dirname, "../../../build-output");
-const RUNTIME_REDIS_ADDR_PLACEHOLDER = "__RUNTIME_REDIS_ADDR__";
 
 export const CreateOnixServer = async () => {
     console.log("Creating API Service Layer via ONIX...");
@@ -235,7 +234,7 @@ async function createAdapterConfigs(
             domain: domain,
             version: version,
             port: parseInt(process.env.PORT || "8080"),
-            redisAddress: RUNTIME_REDIS_ADDR_PLACEHOLDER,
+            redisAddress: `${process.env.REDIS_HOST || "localhost"}:${process.env.REDIS_PORT || "6379"}`,
             configServiceURL: process.env.CONFIG_SERVICE_URL || "",
             mockServiceURL: process.env.MOCK_SERVER_URL || "",
             recorderServiceHTTP_URL:

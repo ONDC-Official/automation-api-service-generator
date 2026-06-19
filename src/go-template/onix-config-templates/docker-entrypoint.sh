@@ -51,6 +51,18 @@ replace_line_if_value() {
     replace_line "$file" "$pattern" "$replacement"
 }
 
+replace_addr_value_if_value() {
+    file="$1"
+    value="$2"
+
+    if [ ! -f "$file" ] || [ -z "$value" ]; then
+        return 0
+    fi
+
+    escaped_replacement=$(escape_sed_replacement "$value")
+    sed_in_place "s|^\([[:space:]]*\)addr: .*$|\\1addr: ${escaped_replacement}|" "$file"
+}
+
 trim_trailing_slash() {
     value="$1"
     while [ -n "$value" ] && [ "${value%/}" != "$value" ]; do
@@ -73,13 +85,8 @@ render_onix_config() {
         redis_addr="${REDIS_HOST}:${REDIS_PORT}"
     fi
 
-    if [ -z "$redis_addr" ]; then
-        echo "docker-entrypoint: missing Redis runtime configuration; set REDIS_URL or REDIS_HOST and REDIS_PORT" >&2
-        exit 1
-    fi
-
     replace_line_if_value "$ADAPTER_FILE" "$port" '^  port: .*$' "  port: ${port}"
-    replace_line_if_value "$ADAPTER_FILE" "$redis_addr" '^            addr: .*$' "            addr: ${redis_addr}"
+    replace_addr_value_if_value "$ADAPTER_FILE" "$redis_addr"
     replace_line_if_value "$ADAPTER_FILE" "$version" '^            protocolVersion: .*$' "            protocolVersion: ${version}"
     replace_line_if_value "$ADAPTER_FILE" "$domain" '^            protocolDomain: .*$' "            protocolDomain: ${domain}"
     replace_line_if_value "$ADAPTER_FILE" "$config_service_url" '^            configServiceURL: .*$' "            configServiceURL: ${config_service_url}"
