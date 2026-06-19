@@ -73,6 +73,11 @@ render_onix_config() {
         redis_addr="${REDIS_HOST}:${REDIS_PORT}"
     fi
 
+    if [ -z "$redis_addr" ]; then
+        echo "docker-entrypoint: missing Redis runtime configuration; set REDIS_URL or REDIS_HOST and REDIS_PORT" >&2
+        exit 1
+    fi
+
     replace_line_if_value "$ADAPTER_FILE" "$port" '^  port: .*$' "  port: ${port}"
     replace_line_if_value "$ADAPTER_FILE" "$redis_addr" '^            addr: .*$' "            addr: ${redis_addr}"
     replace_line_if_value "$ADAPTER_FILE" "$version" '^            protocolVersion: .*$' "            protocolVersion: ${version}"
