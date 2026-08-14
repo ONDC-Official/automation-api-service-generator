@@ -21,7 +21,7 @@ export const CreateOnixServer = async () => {
     const buildParsed = (await loadAndDereferenceYaml(buildPath)) as any;
     const version = buildParsed.info.version as string;
     const domain = buildParsed.info.domain as string;
-    const domainFilename = domain.toLowerCase().replace(":", "_");
+    const domainFilename = domain.toLowerCase().replace(/:/g, "_");
     const versionFileName = `v${version}`;
     const transactionProperties = buildParsed["x-supported-actions"];
 
