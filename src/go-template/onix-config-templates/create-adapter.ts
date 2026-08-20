@@ -37,7 +37,9 @@ const ALL_ACTIONS = [
     "on_recon",
     "rating",
     "on_rating",
-    "catalog_rejection"
+    "catalog_rejection",
+    "support",
+    "on_support",
 ];
 
 export function createAdapterFiles(params: AdapterParams) {
@@ -165,7 +167,7 @@ function createAdapterYaml(params: AdapterParams) {
                 keyManager: keymanger,
                 middleware: [
                     { id: "encryptionmiddleware" },
-                    getMiddlwarePlugin("np_no_config")
+                    getMiddlwarePlugin("np_no_config"),
                 ],
                 router: getRounterPlugin("np_router"),
                 schemaValidator: schemaPlugin,
@@ -195,9 +197,7 @@ function createAdapterYaml(params: AdapterParams) {
         plugins: {
             cache: cachePlugin,
             keyManager: keymanger,
-            middleware: [
-                getMiddlwarePlugin("mock_no_config"),
-            ],
+            middleware: [getMiddlwarePlugin("mock_no_config")],
             transportWrapper: {
                 id: "outgoingencryptionmiddleware",
             },
