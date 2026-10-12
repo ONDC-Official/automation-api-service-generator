@@ -40,6 +40,8 @@ const ALL_ACTIONS = [
     "catalog_rejection",
     "support",
     "on_support",
+    "receiver_recon",
+    "on_receiver_recon",
 ];
 
 export function createAdapterFiles(params: AdapterParams) {
