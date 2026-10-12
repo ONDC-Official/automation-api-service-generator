@@ -13,6 +13,7 @@ const ONIX_PLUGINS_GIT =
 	"https://github.com/ONDC-Official/automation-beckn-plugins";
 // BUILD_OUTPUT is relative to where the user runs npx (their working directory)
 const BUILD_OUTPUT = path.resolve(process.cwd(), "build-output");
+const RUNTIME_REDIS_ADDR_PLACEHOLDER = "__RUNTIME_REDIS_ADDR__";
 
 export const CreateOnixServer = async () => {
     console.log("Creating API Service Layer via ONIX...");

@@ -12,5 +12,5 @@
 		"esModuleInterop": true // Enables compatibility with Babel imports
 	},
 	"include": ["src"],
-	"exclude": ["node_modules"]
+	"exclude": ["node_modules", "src/config/generated"]
 }
