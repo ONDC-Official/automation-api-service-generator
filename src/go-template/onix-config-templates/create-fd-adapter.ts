@@ -340,14 +340,16 @@ function createFdMockRouter(params: AdapterParams, routes: FdRouteTable) {
 }
 
 // The FD services record what the Beckn ones do, plus FD's own correlation and transport facts:
-// the request a callback answers, and the REST call fd-gate resolved (from its internal headers,
-// which network-observability sees lower-cased).
+// the request a callback answers, whether the workbench let it through as a byte-identical
+// replay, and the REST call fd-gate resolved (from its internal headers, which
+// network-observability sees lower-cased).
 function withFdRemap<T extends { remap: Record<string, unknown> }>(config: T): T {
     return {
         ...config,
         remap: {
             ...config.remap,
             in_reply_to: "$.requestBody.fdEnvelope.inReplyTo",
+            fd_replay: "$.ctx.cookies.fd_replay",
             fd_route: "$.ctx.headers['x-pwb-fd-route']",
             fd_method: "$.ctx.headers['x-pwb-fd-method']",
             fd_path: "$.ctx.headers['x-pwb-fd-path']",
