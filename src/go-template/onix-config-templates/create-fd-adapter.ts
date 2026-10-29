@@ -354,6 +354,10 @@ function withFdRemap<T extends { remap: Record<string, unknown> }>(config: T): T
             fd_method: "$.ctx.headers['x-pwb-fd-method']",
             fd_path: "$.ctx.headers['x-pwb-fd-path']",
             duration_ms: "$.ctx.duration_ms",
+            // The recorder stores request headers in the DB payload only under request_headers
+            // (or reqHeader/req_header); the shared remap's req_headers key never reaches it. The
+            // FD report reads the X-Pwb-Fd-* headers from there to judge the REST call.
+            request_headers: "$.ctx.headers_all",
         },
     };
 }
