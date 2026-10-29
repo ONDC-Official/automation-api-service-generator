@@ -5,6 +5,10 @@ import fs from "fs";
 import { loadAndDereferenceYaml } from "../../utils/yaml-utils.js";
 import { createOnixEnvFile } from "../../utils/env-file.js";
 import { createAdapterFiles } from "../onix-config-templates/create-adapter.js";
+import {
+    createFdAdapterFiles,
+    FdRouteTable,
+} from "../onix-config-templates/create-fd-adapter.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +29,8 @@ export const CreateOnixServer = async () => {
     const domainFilename = domain.toLowerCase().replace(/:/g, "_");
     const versionFileName = `v${version}`;
     const transactionProperties = buildParsed["x-supported-actions"];
+    // FD (ONDC:FIS14:FD) builds carry a route table; Beckn builds do not.
+    const fdRoutes = buildParsed["x-fd-routes"] as FdRouteTable | undefined;
 
     // Step 1: Generate schemas
     await generateSchemas(
@@ -48,10 +54,10 @@ export const CreateOnixServer = async () => {
     await createOnixEnvFile(BUILD_OUTPUT);
 
     // Step 6: Create adapter configuration files
-    await createAdapterConfigs(domain, version, transactionProperties);
+    await createAdapterConfigs(domain, version, transactionProperties, fdRoutes);
 
     // Step 7: Copy Dockerfile, entrypoint, and docker-compose
-    await copyDockerAndComposeFiles();
+    await copyDockerAndComposeFiles(fdRoutes !== undefined);
 };
 
 async function generateSchemas(
@@ -100,14 +106,29 @@ async function clonePlugins() {
     }
 
     if (!fs.existsSync(pluginsPath)) {
+        // PLUGINS_GIT and PLUGINS_REF (tooling/versions.env) pin the plugins to a commit;
+        // unset, the main branch of the official repository is used.
+        const pluginsGit = process.env.PLUGINS_GIT || ONIX_PLUGINS_GIT;
+        const pluginsRef = process.env.PLUGINS_REF;
         console.log("Cloning Plugins repository...");
-        execSync(
-            `git clone --branch main ${ONIX_PLUGINS_GIT} automation-beckn-plugins`,
-            {
+        if (pluginsRef) {
+            execSync(`git clone ${pluginsGit} automation-beckn-plugins`, {
                 cwd: tempPath,
                 stdio: "inherit",
-            },
-        );
+            });
+            execSync(`git checkout --detach ${pluginsRef}`, {
+                cwd: pluginsPath,
+                stdio: "inherit",
+            });
+        } else {
+            execSync(
+                `git clone --branch main ${pluginsGit} automation-beckn-plugins`,
+                {
+                    cwd: tempPath,
+                    stdio: "inherit",
+                },
+            );
+        }
         console.log("✅ Plugins repository cloned successfully.");
     } else {
         console.log("Plugins repository already exists, skipping clone.");
@@ -223,6 +244,7 @@ async function createAdapterConfigs(
     domain: string,
     version: string,
     transactionProperties?: any,
+    fdRoutes?: FdRouteTable,
 ) {
     const configDir = path.resolve(BUILD_OUTPUT, "temp/config");
 
@@ -247,7 +269,9 @@ async function createAdapterConfigs(
             transactionProperties: transactionProperties,
         };
         console.log("Adapter config parameters:", params);
-        const files = createAdapterFiles(params);
+        const files = fdRoutes
+            ? createFdAdapterFiles(params, fdRoutes)
+            : createAdapterFiles(params);
 
         for (const file of files) {
             const filePath = path.resolve(
@@ -265,10 +289,11 @@ async function createAdapterConfigs(
     }
 }
 
-async function copyDockerAndComposeFiles() {
+async function copyDockerAndComposeFiles(isFd: boolean) {
+    // FD images also build the FD-only plugins (fd-gate, fd-transport).
     const sourceDockerfile = path.resolve(
         __dirname,
-        "../../../src/go-template/onix-config-templates/Dockerfile",
+        `../../../src/go-template/onix-config-templates/${isFd ? "Dockerfile.fd" : "Dockerfile"}`,
     );
     const destDockerfile = path.resolve(BUILD_OUTPUT, "Dockerfile");
     fs.copyFileSync(sourceDockerfile, destDockerfile);

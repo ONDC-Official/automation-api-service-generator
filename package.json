@@ -10,6 +10,7 @@
     "files": [
         "dist/",
         "src/go-template/onix-config-templates/Dockerfile",
+        "src/go-template/onix-config-templates/Dockerfile.fd",
         "src/go-template/onix-config-templates/docker-compose.yml",
         "src/go-template/onix-config-templates/docker-entrypoint.sh",
         "template/",

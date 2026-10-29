@@ -1,6 +1,6 @@
 import yaml from "js-yaml";
 
-interface AdapterParams {
+export interface AdapterParams {
     domain: string;
     version: string;
     port: number;
@@ -309,7 +309,7 @@ function createAdapterYaml(params: AdapterParams) {
     return adapterConfig;
 }
 
-function createFormRouter(params: AdapterParams) {
+export function createFormRouter(params: AdapterParams) {
     return {
         routingRules: [
             {
@@ -360,7 +360,7 @@ function createNpRouter(params: AdapterParams) {
     };
 }
 
-function createMockNoConfig(params: AdapterParams) {
+export function createMockNoConfig(params: AdapterParams) {
     return {
         transport: "grpc",
         grpc_target: params.recorderServiceGRPC_URL,
@@ -386,7 +386,7 @@ function createMockNoConfig(params: AdapterParams) {
     };
 }
 
-function createNpNoConfig(params: AdapterParams) {
+export function createNpNoConfig(params: AdapterParams) {
     return {
         transport: "grpc",
         grpc_target: params.recorderServiceGRPC_URL,
@@ -412,7 +412,7 @@ function createNpNoConfig(params: AdapterParams) {
     };
 }
 
-function getRounterPlugin(routerName: string) {
+export function getRounterPlugin(routerName: string) {
     return {
         id: "router",
         config: {
@@ -421,7 +421,7 @@ function getRounterPlugin(routerName: string) {
     };
 }
 
-function getMiddlwarePlugin(middlewareName: string) {
+export function getMiddlwarePlugin(middlewareName: string) {
     return {
         id: "networkobservability",
         config: {

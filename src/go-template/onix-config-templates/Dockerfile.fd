@@ -1,0 +1,36 @@
+# FD (ONDC:FIS14:FD) image: the Beckn image plus the FD-only plugins (fd-gate, fd-transport).
+# Go plugins load only into the server binary they were built against, so the ONIX image is
+# pinned by digest (tooling/versions.env ONIX_IMAGE) rather than :latest.
+ARG ONIX_IMAGE=ghcr.io/ondc-official/automation-beckn-onix@sha256:b8f157ca992a458fb22a523ff2abc5a05efbfe282defc7c14845660c4647c224
+
+# Build stage - build plugins only
+FROM golang:1.25.5 AS plugin-builder
+
+WORKDIR /temp
+
+# Copy temp directory with plugins
+COPY temp/ .
+
+# Build the plugins, with the FD set
+WORKDIR /temp/automation-beckn-plugins
+RUN chmod +x buildplugins.sh && PWB_PROFILE=fd ./buildplugins.sh /plugins
+
+# Runtime stage - use pre-built onix server
+FROM ${ONIX_IMAGE}
+
+# The base image has server at /workspace/app/server
+WORKDIR /workspace/app
+
+# Copy plugins from plugin-builder
+COPY --from=plugin-builder /plugins ./plugins
+
+COPY temp/schemas ./schemas
+
+# Copy temp config (including fd_routes.yaml) from host
+COPY temp/config ./config
+
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["./server", "--config=./config/adapter.yaml"]
