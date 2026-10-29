@@ -59,11 +59,11 @@ export function createFdAdapterFiles(params: AdapterParams, routes: FdRouteTable
     });
     files.push({
         path: "./mock_no_config.yaml",
-        content: yaml.dump(createMockNoConfig(params)),
+        content: yaml.dump(withFdRemap(createMockNoConfig(params))),
     });
     files.push({
         path: "./np_no_config.yaml",
-        content: yaml.dump(createNpNoConfig(params)),
+        content: yaml.dump(withFdRemap(createNpNoConfig(params))),
     });
     files.push({
         path: "./fd_routes.yaml",
@@ -131,7 +131,11 @@ function createFdAdapterYaml(params: AdapterParams) {
     };
 
     // fd-gate is listed first, so it is the outermost middleware: it sees the participant's
-    // request before anything else and the response last.
+    // request before anything else and the response last. In np mode it verifies the FD
+    // signature, translates the REST call into the internal POST .../<action> the steps
+    // understand, enforces the transport rules and answers replays; in mock mode it checks the
+    // playground's internal key. `addr` and `mockServiceURL` are rewritten by the entrypoint
+    // like the cache's and the workbench plugin's.
     const fdGatePlugin = (mode: "np" | "mock", modulePath: string) => {
         return {
             id: "fdgate",
@@ -139,18 +143,24 @@ function createFdAdapterYaml(params: AdapterParams) {
                 routeTable: ROUTE_TABLE_PATH,
                 mode: mode,
                 pathPrefix: modulePath,
-                // REST translation arrives in M2; until then a resolved request is answered
-                // with a named "not handled yet" error instead of reaching the steps.
-                passThrough: false,
+                addr: params.redisAddress,
+                mockServiceURL: params.mockServiceURL,
+                signature: mode === "np" ? "required" : "off",
+                requireHTTPS: true,
             },
         };
     };
 
     // Requests to these hosts stay inside the workbench and keep their internal headers.
     const internalHosts = internalHostsOf(params.mockServiceURL);
+    // fd-transport renders the REST call and signs it, with the workbench identity from the
+    // environment (SUBSCRIBER_ID, UNIQUE_KEY_ID, SIGNING_PRIVATE), as the key manager reads it.
     const fdTransportPlugin = {
         id: "fdtransport",
-        ...(internalHosts && { config: { internalHosts: internalHosts } }),
+        config: {
+            routeTable: ROUTE_TABLE_PATH,
+            ...(internalHosts && { internalHosts: internalHosts }),
+        },
     };
 
     const receiverHandler = (role: string, modulePath: string) => {
@@ -326,6 +336,23 @@ function createFdMockRouter(params: AdapterParams, routes: FdRouteTable) {
                 endpoints: routes.routes.map((r) => r.action),
             },
         ],
+    };
+}
+
+// The FD services record what the Beckn ones do, plus FD's own correlation and transport facts:
+// the request a callback answers, and the REST call fd-gate resolved (from its internal headers,
+// which network-observability sees lower-cased).
+function withFdRemap<T extends { remap: Record<string, unknown> }>(config: T): T {
+    return {
+        ...config,
+        remap: {
+            ...config.remap,
+            in_reply_to: "$.requestBody.fdEnvelope.inReplyTo",
+            fd_route: "$.ctx.headers['x-pwb-fd-route']",
+            fd_method: "$.ctx.headers['x-pwb-fd-method']",
+            fd_path: "$.ctx.headers['x-pwb-fd-path']",
+            duration_ms: "$.ctx.duration_ms",
+        },
     };
 }
 
