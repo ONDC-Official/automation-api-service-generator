@@ -84,7 +84,7 @@ function createAdapterYaml(params: AdapterParams) {
         maxIdleConns: 1000,
         maxIdleConnsPerHost: 200,
         idleConnTimeout: "300s",
-        responseHeaderTimeout: "5s",
+        responseHeaderTimeout: "20s",
     };
     const schemaPlugin = {
         id: "schemavalidator",
